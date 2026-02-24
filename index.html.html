@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sightreading Split Viewer + Practice (Grade 2)</title>
+<style>
+:root{
+  --bg:#0b0c10; --panel2:#10121a; --text:#e8e8ee; --muted:#a6a7b5;
+  --border:rgba(255,255,255,.10); --border2:rgba(255,255,255,.18);
+  --accent:#7aa2ff; --good:#67f08a; --bad:#ff6b6b;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--text);overflow-x:hidden}
+header{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0));position:sticky;top:0;z-index:10}
+header h1{margin:0;font-size:16px;font-weight:750}
+header .meta{color:var(--muted);font-size:12px}
+
+.app{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 49px)}
+aside{border-right:1px solid var(--border);background:var(--panel2);display:flex;flex-direction:column;min-width:260px;height:calc(100vh - 49px)}
+.controls{padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.controls label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+.controls input[type="search"]{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);outline:none}
+.controls .row{display:flex;align-items:center;gap:10px}
+.controls input[type="range"]{width:100%}
+.controls .small{font-size:12px;color:var(--muted);white-space:nowrap}
+.piece-list{overflow-y:auto;overflow-x:hidden;padding:8px;flex:1 1 auto}
+
+.piece-btn{width:100%;text-align:left;padding:10px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--text);
+  cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.piece-btn:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.06)}
+.piece-btn.active{background:rgba(122,162,255,.14);border-color:rgba(122,162,255,.35)}
+.piece-btn .left{display:flex;flex-direction:column;gap:2px}
+.piece-btn .title{font-weight:650;font-size:13px}
+.piece-btn .sub{font-size:11px;color:var(--muted)}
+
+main{padding:16px;overflow-x:hidden}
+.container{max-width:min(1100px,100%);margin:0 auto}
+.card{border:1px solid var(--border);background:rgba(255,255,255,.03);border-radius:14px;padding:14px;margin-bottom:14px}
+.card h2{margin:0 0 10px 0;font-size:14px}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+.error{color:#ffb4b4;font-size:12px;margin-top:10px}
+
+.img-wrap{overflow:auto;border:1px dashed rgba(255,255,255,.14);border-radius:12px;padding:10px;background:rgba(0,0,0,.18);max-width:100%;width:fit-content}
+img.score{display:block;max-width:none;height:auto}
+
+.rebuild{display:flex;flex-direction:column;gap:0}
+.bar-row{display:flex;align-items:flex-start;flex-wrap:nowrap;gap:0;line-height:0}
+.bar-wrap{position:relative;display:inline-block;border-right:1px solid var(--border2);
+  border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02)}
+.bar-wrap:first-child{border-left:1px solid var(--border2)}
+.bar-wrap.setup{border-right:1px solid rgba(255,255,255,.28)}
+.bar-wrap img{display:block;cursor:pointer}
+.bar-label{position:absolute;top:6px;left:6px;font-size:10px;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);pointer-events:none}
+.bar-wrap.active{outline:3px solid rgba(122,162,255,.7);outline-offset:-2px;z-index:2}
+.bar-wrap:hover{outline:2px solid rgba(122,162,255,.35);outline-offset:-2px;z-index:1}
+
+.badge{font-size:11px;padding:3px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:var(--muted)}
+.btn{border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer;font-weight:650;font-size:13px}
+.btn:hover{background:rgba(255,255,255,.07)}
+.btn.primary{border-color:rgba(122,162,255,.45);background:rgba(122,162,255,.12)}
+.btn.good{border-color:rgba(103,240,138,.5);background:rgba(103,240,138,.12)}
+.btn.bad{border-color:rgba(255,107,107,.5);background:rgba(255,107,107,.12)}
+
+.practice-grid{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+@media(min-width:980px){.practice-grid{grid-template-columns:1fr 300px}}
+.practice-stage{display:flex;flex-direction:column;gap:10px;min-width:0}
+.practice-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.practice-meta{display:flex;flex-direction:column;gap:6px;min-width:220px}
+.mini{font-size:12px;color:var(--muted)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%;padding:8px;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:rgba(0,0,0,.10)}
+.toolbar.secondary{padding:10px}
+
+.field{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.field label{font-size:12px;color:var(--muted)}
+.field input[type="number"]{padding:10px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);outline:none;width:100%}
+.field.row{flex-direction:row;align-items:center;gap:10px}
+.field input[type="checkbox"]{transform:scale(1.1)}
+
+.stats{max-width:320px;width:100%;margin:8px auto 0 auto;display:flex;flex-direction:column;gap:10px}
+.stat{border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;background:rgba(0,0,0,.12)}
+.stat-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.stat .lab{font-size:11px;color:var(--muted)}
+.stat .big{font-size:16px;font-weight:800}
+.bar{height:10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);overflow:hidden;margin-top:8px}
+.bar>i{display:block;height:100%;width:0%;background:rgba(122,162,255,.55)}
+.bar.good>i{background:rgba(103,240,138,.55)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sightreading Split Viewer + Practice</h1>
+  <div class="meta" id="meta"></div>
+</header>
+
+<div class="app">
+  <aside>
+    <div class="controls">
+      <label>Search pieces
+        <input id="search" type="search" placeholder="e.g., 1, 12, page 3…" />
+      </label>
+
+      <div class="row">
+        <span class="small">Zoom</span>
+        <input id="zoom" type="range" min="20" max="220" value="50" />
+        <span class="small" id="zoomLabel">50%</span>
+      </div>
+
+      <div class="row" style="justify-content: space-between;">
+        <span class="badge" id="countBadge">0 pieces</span>
+        <span class="badge" id="barBadge">0 bars</span>
+      </div>
+    </div>
+    <div class="piece-list" id="pieceList"></div>
+  </aside>
+
+  <main>
+    <div class="container">
+      <section class="card">
+        <h2 id="pieceTitle">Select a piece</h2>
+        <div class="img-wrap"><img id="fullImg" class="score" alt="Full piece" /></div>
+        <div class="hint" id="pieceInfo"></div>
+        <div class="error" id="fullErr" style="display:none;"></div>
+      </section>
+
+      <section class="card">
+        <h2>Recreated from split bars (click any bar to practice)</h2>
+        <div class="img-wrap"><div id="rebuild" class="rebuild"></div></div>
+        <div class="hint">Borders show split boundaries.</div>
+        <div class="error" id="rebuildErr" style="display:none;"></div>
+      </section>
+
+      <section class="card">
+        <h2>Practice mode</h2>
+        <div class="practice-grid">
+          <div class="practice-stage">
+            <div class="practice-header">
+              <div class="practice-meta">
+                <span class="badge" id="practiceBadge">No bar selected</span>
+                <span class="mini" id="timeSigBadge">Time signature: —</span>
+                <span class="mini" id="practiceTimer">—</span>
+              </div>
+              <div class="toolbar">
+                <button class="btn" id="prevBtn">← Prev</button>
+                <button class="btn" id="nextBtn">Next →</button>
+                <button class="btn primary" id="autoBtn">Start auto</button>
+              </div>
+            </div>
+
+            <div class="img-wrap"><img id="practiceImg" class="score" alt="Practice bar" /></div>
+
+            <div class="toolbar secondary">
+              <button class="btn good" id="correctBtn">Correct (C)</button>
+              <button class="btn bad" id="incorrectBtn">Incorrect (X)</button>
+              <button class="btn" id="clearPieceBtn">Clear piece stats</button>
+            </div>
+
+            <div class="error" id="practiceErr" style="display:none;"></div>
+          </div>
+
+          <div>
+            <div class="field">
+              <label for="intervalSec">Auto interval (seconds)</label>
+              <input id="intervalSec" type="number" min="0.5" step="0.1" value="3.0" />
+            </div>
+            <div class="field row">
+              <input id="advanceOnAnswer" type="checkbox" checked />
+              <label for="advanceOnAnswer" style="margin:0;">Advance on answer</label>
+            </div>
+            <div class="field row">
+              <input id="loopPiece" type="checkbox" />
+              <label for="loopPiece" style="margin:0;">Loop at end of piece</label>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-top"><div class="lab">Accuracy (this piece)</div><div class="big" id="kpiAcc">—</div></div>
+                <div class="bar good"><i id="accBarPiece"></i></div>
+              </div>
+              <div class="stat">
+                <div class="stat-top"><div class="lab">Avg response (this piece)</div><div class="big" id="kpiSpeed">—</div></div>
+                <div class="bar"><i id="spdBarPiece"></i></div>
+              </div>
+              <div class="stat">
+                <div class="stat-top"><div class="lab">Accuracy (all pieces)</div><div class="big" id="kpiAccAll">—</div></div>
+                <div class="bar good"><i id="accBarAll"></i></div>
+              </div>
+              <div class="stat">
+                <div class="stat-top"><div class="lab">Avg response (all pieces)</div><div class="big" id="kpiSpeedAll">—</div></div>
+                <div class="bar"><i id="spdBarAll"></i></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+              <button class="btn" id="exportBtn" style="flex:1 1 160px;">Export session JSON</button>
+              <button class="btn" id="clearAllBtn" style="flex:1 1 140px;">Clear all stats</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+const INDEX = {"grade": 2, "pieces": [{"piece_id": "ex_01", "exercise_number": 1, "source_page": 2, "piece_image": "pieces/ex_01.png", "setup": {"filename": "setup/ex_01_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_01_bar_01.png", "bbox_px": [55, 0, 100, 333], "type": "bar"}, {"index": 2, "filename": "bars/ex_01_bar_02.png", "bbox_px": [96, 0, 519, 333], "type": "bar"}, {"index": 3, "filename": "bars/ex_01_bar_03.png", "bbox_px": [515, 0, 906, 333], "type": "bar"}, {"index": 4, "filename": "bars/ex_01_bar_04.png", "bbox_px": [902, 0, 1288, 333], "type": "bar"}, {"index": 5, "filename": "bars/ex_01_bar_05.png", "bbox_px": [1284, 0, 1624, 333], "type": "bar"}], "barlines_x_px": [98, 517, 904, 1286]}, {"piece_id": "ex_02", "exercise_number": 2, "source_page": 2, "piece_image": "pieces/ex_02.png", "setup": {"filename": "setup/ex_02_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_02_bar_01.png", "bbox_px": [56, 0, 912, 337], "type": "bar"}, {"index": 2, "filename": "bars/ex_02_bar_02.png", "bbox_px": [908, 0, 1617, 337], "type": "bar"}], "barlines_x_px": [910]}, {"piece_id": "ex_03", "exercise_number": 3, "source_page": 2, "piece_image": "pieces/ex_03.png", "setup": {"filename": "setup/ex_03_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_03_bar_01.png", "bbox_px": [57, 0, 884, 342], "type": "bar"}, {"index": 2, "filename": "bars/ex_03_bar_02.png", "bbox_px": [880, 0, 1120, 342], "type": "bar"}, {"index": 3, "filename": "bars/ex_03_bar_03.png", "bbox_px": [1116, 0, 1615, 342], "type": "bar"}], "barlines_x_px": [882, 1118]}, {"piece_id": "ex_04", "exercise_number": 4, "source_page": 2, "piece_image": "pieces/ex_04.png", "setup": {"filename": "setup/ex_04_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_04_bar_01.png", "bbox_px": [56, 0, 573, 342], "type": "bar"}, {"index": 2, "filename": "bars/ex_04_bar_02.png", "bbox_px": [569, 0, 876, 342], "type": "bar"}, {"index": 3, "filename": "bars/ex_04_bar_03.png", "bbox_px": [872, 0, 1621, 342], "type": "bar"}], "barlines_x_px": [571, 874]}, {"piece_id": "ex_05", "exercise_number": 5, "source_page": 2, "piece_image": "pieces/ex_05.png", "setup": {"filename": "setup/ex_05_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_05_bar_01.png", "bbox_px": [39, 0, 693, 384], "type": "bar"}, {"index": 2, "filename": "bars/ex_05_bar_02.png", "bbox_px": [689, 0, 1678, 384], "type": "bar"}], "barlines_x_px": [691]}, {"piece_id": "ex_06", "exercise_number": 6, "source_page": 3, "piece_image": "pieces/ex_06.png", "setup": {"filename": "setup/ex_06_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_06_bar_01.png", "bbox_px": [0, 0, 1524, 324], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_07", "exercise_number": 7, "source_page": 3, "piece_image": "pieces/ex_07.png", "setup": {"filename": "setup/ex_07_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_07_bar_01.png", "bbox_px": [52, 0, 95, 336], "type": "bar"}, {"index": 2, "filename": "bars/ex_07_bar_02.png", "bbox_px": [91, 0, 876, 336], "type": "bar"}, {"index": 3, "filename": "bars/ex_07_bar_03.png", "bbox_px": [872, 0, 1515, 336], "type": "bar"}], "barlines_x_px": [93, 874]}, {"piece_id": "ex_08", "exercise_number": 8, "source_page": 3, "piece_image": "pieces/ex_08.png", "setup": {"filename": "setup/ex_08_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_08_bar_01.png", "bbox_px": [53, 0, 854, 326], "type": "bar"}, {"index": 2, "filename": "bars/ex_08_bar_02.png", "bbox_px": [850, 0, 1502, 326], "type": "bar"}, {"index": 3, "filename": "bars/ex_08_bar_03.png", "bbox_px": [1498, 0, 1641, 326], "type": "bar"}], "barlines_x_px": [852, 1500]}, {"piece_id": "ex_09", "exercise_number": 9, "source_page": 3, "piece_image": "pieces/ex_09.png", "setup": {"filename": "setup/ex_09_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_09_bar_01.png", "bbox_px": [53, 0, 535, 307], "type": "bar"}, {"index": 2, "filename": "bars/ex_09_bar_02.png", "bbox_px": [531, 0, 1521, 307], "type": "bar"}], "barlines_x_px": [533]}, {"piece_id": "ex_10", "exercise_number": 10, "source_page": 3, "piece_image": "pieces/ex_10.png", "setup": {"filename": "setup/ex_10_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_10_bar_01.png", "bbox_px": [0, 0, 1524, 316], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_11", "exercise_number": 11, "source_page": 4, "piece_image": "pieces/ex_11.png", "setup": {"filename": "setup/ex_11_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_11_bar_01.png", "bbox_px": [45, 0, 97, 326], "type": "bar"}, {"index": 2, "filename": "bars/ex_11_bar_02.png", "bbox_px": [93, 0, 434, 326], "type": "bar"}, {"index": 3, "filename": "bars/ex_11_bar_03.png", "bbox_px": [430, 0, 631, 326], "type": "bar"}, {"index": 4, "filename": "bars/ex_11_bar_04.png", "bbox_px": [627, 0, 870, 326], "type": "bar"}, {"index": 5, "filename": "bars/ex_11_bar_05.png", "bbox_px": [866, 0, 1071, 326], "type": "bar"}, {"index": 6, "filename": "bars/ex_11_bar_06.png", "bbox_px": [1067, 0, 1353, 326], "type": "bar"}, {"index": 7, "filename": "bars/ex_11_bar_07.png", "bbox_px": [1349, 0, 1547, 326], "type": "bar"}], "barlines_x_px": [95, 432, 629, 868, 1069, 1351]}, {"piece_id": "ex_12", "exercise_number": 12, "source_page": 4, "piece_image": "pieces/ex_12.png", "setup": {"filename": "setup/ex_12_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_12_bar_01.png", "bbox_px": [47, 0, 847, 334], "type": "bar"}, {"index": 2, "filename": "bars/ex_12_bar_02.png", "bbox_px": [843, 0, 1215, 334], "type": "bar"}, {"index": 3, "filename": "bars/ex_12_bar_03.png", "bbox_px": [1211, 0, 1545, 334], "type": "bar"}], "barlines_x_px": [845, 1213]}, {"piece_id": "ex_13", "exercise_number": 13, "source_page": 4, "piece_image": "pieces/ex_13.png", "setup": {"filename": "setup/ex_13_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_13_bar_01.png", "bbox_px": [48, 0, 879, 329], "type": "bar"}, {"index": 2, "filename": "bars/ex_13_bar_02.png", "bbox_px": [875, 0, 1285, 329], "type": "bar"}, {"index": 3, "filename": "bars/ex_13_bar_03.png", "bbox_px": [1281, 0, 1550, 329], "type": "bar"}], "barlines_x_px": [877, 1283]}, {"piece_id": "ex_14", "exercise_number": 14, "source_page": 4, "piece_image": "pieces/ex_14.png", "setup": {"filename": "setup/ex_14_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_14_bar_01.png", "bbox_px": [49, 0, 1253, 331], "type": "bar"}, {"index": 2, "filename": "bars/ex_14_bar_02.png", "bbox_px": [1249, 0, 1560, 331], "type": "bar"}], "barlines_x_px": [1251]}, {"piece_id": "ex_15", "exercise_number": 15, "source_page": 4, "piece_image": "pieces/ex_15.png", "setup": {"filename": "setup/ex_15_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_15_bar_01.png", "bbox_px": [0, 0, 1569, 340], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_16", "exercise_number": 16, "source_page": 5, "piece_image": "pieces/ex_16.png", "setup": {"filename": "setup/ex_16_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_16_bar_01.png", "bbox_px": [0, 0, 1543, 339], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_17", "exercise_number": 17, "source_page": 5, "piece_image": "pieces/ex_17.png", "setup": {"filename": "setup/ex_17_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_17_bar_01.png", "bbox_px": [47, 0, 640, 338], "type": "bar"}, {"index": 2, "filename": "bars/ex_17_bar_02.png", "bbox_px": [636, 0, 1543, 338], "type": "bar"}], "barlines_x_px": [638]}, {"piece_id": "ex_18", "exercise_number": 18, "source_page": 5, "piece_image": "pieces/ex_18.png", "setup": {"filename": "setup/ex_18_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_18_bar_01.png", "bbox_px": [47, 0, 543, 320], "type": "bar"}, {"index": 2, "filename": "bars/ex_18_bar_02.png", "bbox_px": [539, 0, 1543, 320], "type": "bar"}], "barlines_x_px": [541]}, {"piece_id": "ex_19", "exercise_number": 19, "source_page": 5, "piece_image": "pieces/ex_19.png", "setup": {"filename": "setup/ex_19_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_19_bar_01.png", "bbox_px": [47, 0, 525, 327], "type": "bar"}, {"index": 2, "filename": "bars/ex_19_bar_02.png", "bbox_px": [521, 0, 1550, 327], "type": "bar"}], "barlines_x_px": [523]}, {"piece_id": "ex_20", "exercise_number": 20, "source_page": 5, "piece_image": "pieces/ex_20.png", "setup": {"filename": "setup/ex_20_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_20_bar_01.png", "bbox_px": [58, 0, 853, 347], "type": "bar"}, {"index": 2, "filename": "bars/ex_20_bar_02.png", "bbox_px": [849, 0, 1122, 347], "type": "bar"}, {"index": 3, "filename": "bars/ex_20_bar_03.png", "bbox_px": [1118, 0, 1541, 347], "type": "bar"}, {"index": 4, "filename": "bars/ex_20_bar_04.png", "bbox_px": [1537, 0, 1673, 347], "type": "bar"}], "barlines_x_px": [851, 1120, 1539]}, {"piece_id": "ex_21", "exercise_number": 21, "source_page": 6, "piece_image": "pieces/ex_21.png", "setup": {"filename": "setup/ex_21_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_21_bar_01.png", "bbox_px": [0, 0, 1622, 349], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_22", "exercise_number": 22, "source_page": 6, "piece_image": "pieces/ex_22.png", "setup": {"filename": "setup/ex_22_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_22_bar_01.png", "bbox_px": [60, 0, 959, 341], "type": "bar"}, {"index": 2, "filename": "bars/ex_22_bar_02.png", "bbox_px": [955, 0, 1619, 341], "type": "bar"}], "barlines_x_px": [957]}, {"piece_id": "ex_23", "exercise_number": 23, "source_page": 6, "piece_image": "pieces/ex_23.png", "setup": {"filename": "setup/ex_23_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_23_bar_01.png", "bbox_px": [58, 0, 459, 332], "type": "bar"}, {"index": 2, "filename": "bars/ex_23_bar_02.png", "bbox_px": [455, 0, 981, 332], "type": "bar"}, {"index": 3, "filename": "bars/ex_23_bar_03.png", "bbox_px": [977, 0, 1183, 332], "type": "bar"}, {"index": 4, "filename": "bars/ex_23_bar_04.png", "bbox_px": [1179, 0, 1424, 332], "type": "bar"}, {"index": 5, "filename": "bars/ex_23_bar_05.png", "bbox_px": [1420, 0, 1620, 332], "type": "bar"}], "barlines_x_px": [457, 979, 1181, 1422]}, {"piece_id": "ex_24", "exercise_number": 24, "source_page": 6, "piece_image": "pieces/ex_24.png", "setup": {"filename": "setup/ex_24_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_24_bar_01.png", "bbox_px": [59, 0, 910, 348], "type": "bar"}, {"index": 2, "filename": "bars/ex_24_bar_02.png", "bbox_px": [906, 0, 1612, 348], "type": "bar"}, {"index": 3, "filename": "bars/ex_24_bar_03.png", "bbox_px": [1608, 0, 1756, 348], "type": "bar"}], "barlines_x_px": [908, 1610]}, {"piece_id": "ex_25", "exercise_number": 25, "source_page": 6, "piece_image": "pieces/ex_25.png", "setup": {"filename": "setup/ex_25_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_25_bar_01.png", "bbox_px": [58, 0, 939, 360], "type": "bar"}, {"index": 2, "filename": "bars/ex_25_bar_02.png", "bbox_px": [935, 0, 1356, 360], "type": "bar"}, {"index": 3, "filename": "bars/ex_25_bar_03.png", "bbox_px": [1352, 0, 1626, 360], "type": "bar"}], "barlines_x_px": [937, 1354]}, {"piece_id": "ex_26", "exercise_number": 26, "source_page": 7, "piece_image": "pieces/ex_26.png", "setup": {"filename": "setup/ex_26_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_26_bar_01.png", "bbox_px": [57, 0, 97, 347], "type": "bar"}, {"index": 2, "filename": "bars/ex_26_bar_02.png", "bbox_px": [93, 0, 892, 347], "type": "bar"}, {"index": 3, "filename": "bars/ex_26_bar_03.png", "bbox_px": [888, 0, 1581, 347], "type": "bar"}], "barlines_x_px": [95, 890]}, {"piece_id": "ex_27", "exercise_number": 27, "source_page": 7, "piece_image": "pieces/ex_27.png", "setup": {"filename": "setup/ex_27_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_27_bar_01.png", "bbox_px": [57, 0, 477, 349], "type": "bar"}, {"index": 2, "filename": "bars/ex_27_bar_02.png", "bbox_px": [473, 0, 886, 349], "type": "bar"}, {"index": 3, "filename": "bars/ex_27_bar_03.png", "bbox_px": [882, 0, 1129, 349], "type": "bar"}, {"index": 4, "filename": "bars/ex_27_bar_04.png", "bbox_px": [1125, 0, 1567, 349], "type": "bar"}, {"index": 5, "filename": "bars/ex_27_bar_05.png", "bbox_px": [1563, 0, 1722, 349], "type": "bar"}], "barlines_x_px": [475, 884, 1127, 1565]}, {"piece_id": "ex_28", "exercise_number": 28, "source_page": 7, "piece_image": "pieces/ex_28.png", "setup": {"filename": "setup/ex_28_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_28_bar_01.png", "bbox_px": [57, 0, 489, 373], "type": "bar"}, {"index": 2, "filename": "bars/ex_28_bar_02.png", "bbox_px": [485, 0, 1567, 373], "type": "bar"}, {"index": 3, "filename": "bars/ex_28_bar_03.png", "bbox_px": [1563, 0, 1722, 373], "type": "bar"}], "barlines_x_px": [487, 1565]}, {"piece_id": "ex_29", "exercise_number": 29, "source_page": 7, "piece_image": "pieces/ex_29.png", "setup": {"filename": "setup/ex_29_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_29_bar_01.png", "bbox_px": [58, 0, 98, 338], "type": "bar"}, {"index": 2, "filename": "bars/ex_29_bar_02.png", "bbox_px": [94, 0, 560, 338], "type": "bar"}, {"index": 3, "filename": "bars/ex_29_bar_03.png", "bbox_px": [556, 0, 930, 338], "type": "bar"}, {"index": 4, "filename": "bars/ex_29_bar_04.png", "bbox_px": [926, 0, 1591, 338], "type": "bar"}], "barlines_x_px": [96, 558, 928]}, {"piece_id": "ex_30", "exercise_number": 30, "source_page": 7, "piece_image": "pieces/ex_30.png", "setup": {"filename": "setup/ex_30_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_30_bar_01.png", "bbox_px": [59, 0, 1577, 338], "type": "bar"}], "barlines_x_px": [1575]}, {"piece_id": "ex_31", "exercise_number": 31, "source_page": 8, "piece_image": "pieces/ex_31.png", "setup": {"filename": "setup/ex_31_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_31_bar_01.png", "bbox_px": [0, 0, 1589, 342], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_32", "exercise_number": 32, "source_page": 8, "piece_image": "pieces/ex_32.png", "setup": {"filename": "setup/ex_32_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_32_bar_01.png", "bbox_px": [61, 0, 1284, 341], "type": "bar"}, {"index": 2, "filename": "bars/ex_32_bar_02.png", "bbox_px": [1280, 0, 1584, 341], "type": "bar"}], "barlines_x_px": [1282]}, {"piece_id": "ex_33", "exercise_number": 33, "source_page": 8, "piece_image": "pieces/ex_33.png", "setup": {"filename": "setup/ex_33_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_33_bar_01.png", "bbox_px": [60, 0, 428, 331], "type": "bar"}, {"index": 2, "filename": "bars/ex_33_bar_02.png", "bbox_px": [424, 0, 894, 331], "type": "bar"}, {"index": 3, "filename": "bars/ex_33_bar_03.png", "bbox_px": [890, 0, 1582, 331], "type": "bar"}], "barlines_x_px": [426, 892]}, {"piece_id": "ex_34", "exercise_number": 34, "source_page": 8, "piece_image": "pieces/ex_34.png", "setup": {"filename": "setup/ex_34_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_34_bar_01.png", "bbox_px": [60, 0, 98, 347], "type": "bar"}, {"index": 2, "filename": "bars/ex_34_bar_02.png", "bbox_px": [94, 0, 557, 347], "type": "bar"}, {"index": 3, "filename": "bars/ex_34_bar_03.png", "bbox_px": [553, 0, 900, 347], "type": "bar"}, {"index": 4, "filename": "bars/ex_34_bar_04.png", "bbox_px": [896, 0, 1249, 347], "type": "bar"}, {"index": 5, "filename": "bars/ex_34_bar_05.png", "bbox_px": [1245, 0, 1588, 347], "type": "bar"}], "barlines_x_px": [96, 555, 898, 1247]}, {"piece_id": "ex_35", "exercise_number": 35, "source_page": 8, "piece_image": "pieces/ex_35.png", "setup": {"filename": "setup/ex_35_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_35_bar_01.png", "bbox_px": [0, 0, 1592, 339], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_36", "exercise_number": 36, "source_page": 9, "piece_image": "pieces/ex_36.png", "setup": {"filename": "setup/ex_36_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_36_bar_01.png", "bbox_px": [58, 0, 920, 336], "type": "bar"}, {"index": 2, "filename": "bars/ex_36_bar_02.png", "bbox_px": [916, 0, 1534, 336], "type": "bar"}, {"index": 3, "filename": "bars/ex_36_bar_03.png", "bbox_px": [1530, 0, 1687, 336], "type": "bar"}], "barlines_x_px": [918, 1532]}, {"piece_id": "ex_37", "exercise_number": 37, "source_page": 9, "piece_image": "pieces/ex_37.png", "setup": {"filename": "setup/ex_37_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_37_bar_01.png", "bbox_px": [57, 0, 94, 349], "type": "bar"}, {"index": 2, "filename": "bars/ex_37_bar_02.png", "bbox_px": [90, 0, 605, 349], "type": "bar"}, {"index": 3, "filename": "bars/ex_37_bar_03.png", "bbox_px": [601, 0, 877, 349], "type": "bar"}, {"index": 4, "filename": "bars/ex_37_bar_04.png", "bbox_px": [873, 0, 1110, 349], "type": "bar"}, {"index": 5, "filename": "bars/ex_37_bar_05.png", "bbox_px": [1106, 0, 1543, 349], "type": "bar"}], "barlines_x_px": [92, 603, 875, 1108]}, {"piece_id": "ex_38", "exercise_number": 38, "source_page": 9, "piece_image": "pieces/ex_38.png", "setup": {"filename": "setup/ex_38_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_38_bar_01.png", "bbox_px": [58, 0, 95, 322], "type": "bar"}, {"index": 2, "filename": "bars/ex_38_bar_02.png", "bbox_px": [91, 0, 846, 322], "type": "bar"}, {"index": 3, "filename": "bars/ex_38_bar_03.png", "bbox_px": [842, 0, 1543, 322], "type": "bar"}], "barlines_x_px": [93, 844]}, {"piece_id": "ex_39", "exercise_number": 39, "source_page": 9, "piece_image": "pieces/ex_39.png", "setup": {"filename": "setup/ex_39_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_39_bar_01.png", "bbox_px": [59, 0, 96, 355], "type": "bar"}, {"index": 2, "filename": "bars/ex_39_bar_02.png", "bbox_px": [92, 0, 651, 355], "type": "bar"}, {"index": 3, "filename": "bars/ex_39_bar_03.png", "bbox_px": [647, 0, 855, 355], "type": "bar"}, {"index": 4, "filename": "bars/ex_39_bar_04.png", "bbox_px": [851, 0, 1140, 355], "type": "bar"}, {"index": 5, "filename": "bars/ex_39_bar_05.png", "bbox_px": [1136, 0, 1541, 355], "type": "bar"}, {"index": 6, "filename": "bars/ex_39_bar_06.png", "bbox_px": [1537, 0, 1690, 355], "type": "bar"}], "barlines_x_px": [94, 649, 853, 1138, 1539]}, {"piece_id": "ex_40", "exercise_number": 40, "source_page": 9, "piece_image": "pieces/ex_40.png", "setup": {"filename": "setup/ex_40_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_40_bar_01.png", "bbox_px": [59, 0, 557, 328], "type": "bar"}, {"index": 2, "filename": "bars/ex_40_bar_02.png", "bbox_px": [553, 0, 1222, 328], "type": "bar"}, {"index": 3, "filename": "bars/ex_40_bar_03.png", "bbox_px": [1218, 0, 1556, 328], "type": "bar"}], "barlines_x_px": [555, 1220]}, {"piece_id": "ex_41", "exercise_number": 41, "source_page": 10, "piece_image": "pieces/ex_41.png", "setup": {"filename": "setup/ex_41_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_41_bar_01.png", "bbox_px": [59, 0, 104, 393], "type": "bar"}, {"index": 2, "filename": "bars/ex_41_bar_02.png", "bbox_px": [100, 0, 715, 393], "type": "bar"}, {"index": 3, "filename": "bars/ex_41_bar_03.png", "bbox_px": [711, 0, 929, 393], "type": "bar"}, {"index": 4, "filename": "bars/ex_41_bar_04.png", "bbox_px": [925, 0, 1703, 393], "type": "bar"}], "barlines_x_px": [102, 713, 927]}, {"piece_id": "ex_42", "exercise_number": 42, "source_page": 10, "piece_image": "pieces/ex_42.png", "setup": {"filename": "setup/ex_42_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_42_bar_01.png", "bbox_px": [64, 0, 1024, 358], "type": "bar"}, {"index": 2, "filename": "bars/ex_42_bar_02.png", "bbox_px": [1020, 0, 1699, 358], "type": "bar"}], "barlines_x_px": [1022]}, {"piece_id": "ex_43", "exercise_number": 43, "source_page": 10, "piece_image": "pieces/ex_43.png", "setup": {"filename": "setup/ex_43_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_43_bar_01.png", "bbox_px": [65, 0, 106, 349], "type": "bar"}, {"index": 2, "filename": "bars/ex_43_bar_02.png", "bbox_px": [102, 0, 905, 349], "type": "bar"}, {"index": 3, "filename": "bars/ex_43_bar_03.png", "bbox_px": [901, 0, 1695, 349], "type": "bar"}], "barlines_x_px": [104, 903]}, {"piece_id": "ex_44", "exercise_number": 44, "source_page": 10, "piece_image": "pieces/ex_44.png", "setup": {"filename": "setup/ex_44_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_44_bar_01.png", "bbox_px": [65, 0, 105, 357], "type": "bar"}, {"index": 2, "filename": "bars/ex_44_bar_02.png", "bbox_px": [101, 0, 614, 357], "type": "bar"}, {"index": 3, "filename": "bars/ex_44_bar_03.png", "bbox_px": [610, 0, 997, 357], "type": "bar"}, {"index": 4, "filename": "bars/ex_44_bar_04.png", "bbox_px": [993, 0, 1700, 357], "type": "bar"}], "barlines_x_px": [103, 612, 995]}, {"piece_id": "ex_45", "exercise_number": 45, "source_page": 10, "piece_image": "pieces/ex_45.png", "setup": {"filename": "setup/ex_45_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_45_bar_01.png", "bbox_px": [63, 0, 104, 388], "type": "bar"}, {"index": 2, "filename": "bars/ex_45_bar_02.png", "bbox_px": [100, 0, 1001, 388], "type": "bar"}, {"index": 3, "filename": "bars/ex_45_bar_03.png", "bbox_px": [997, 0, 1489, 388], "type": "bar"}, {"index": 4, "filename": "bars/ex_45_bar_04.png", "bbox_px": [1485, 0, 1701, 388], "type": "bar"}], "barlines_x_px": [102, 999, 1487]}, {"piece_id": "ex_46", "exercise_number": 46, "source_page": 11, "piece_image": "pieces/ex_46.png", "setup": {"filename": "setup/ex_46_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_46_bar_01.png", "bbox_px": [60, 0, 97, 338], "type": "bar"}, {"index": 2, "filename": "bars/ex_46_bar_02.png", "bbox_px": [93, 0, 935, 338], "type": "bar"}, {"index": 3, "filename": "bars/ex_46_bar_03.png", "bbox_px": [931, 0, 1605, 338], "type": "bar"}], "barlines_x_px": [95, 933]}, {"piece_id": "ex_47", "exercise_number": 47, "source_page": 11, "piece_image": "pieces/ex_47.png", "setup": {"filename": "setup/ex_47_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_47_bar_01.png", "bbox_px": [0, 0, 1603, 348], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_48", "exercise_number": 48, "source_page": 11, "piece_image": "pieces/ex_48.png", "setup": {"filename": "setup/ex_48_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_48_bar_01.png", "bbox_px": [61, 0, 972, 352], "type": "bar"}, {"index": 2, "filename": "bars/ex_48_bar_02.png", "bbox_px": [968, 0, 1592, 352], "type": "bar"}, {"index": 3, "filename": "bars/ex_48_bar_03.png", "bbox_px": [1588, 0, 1738, 352], "type": "bar"}], "barlines_x_px": [970, 1590]}, {"piece_id": "ex_49", "exercise_number": 49, "source_page": 11, "piece_image": "pieces/ex_49.png", "setup": {"filename": "setup/ex_49_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_49_bar_01.png", "bbox_px": [60, 0, 539, 356], "type": "bar"}, {"index": 2, "filename": "bars/ex_49_bar_02.png", "bbox_px": [535, 0, 886, 356], "type": "bar"}, {"index": 3, "filename": "bars/ex_49_bar_03.png", "bbox_px": [882, 0, 1598, 356], "type": "bar"}, {"index": 4, "filename": "bars/ex_49_bar_04.png", "bbox_px": [1594, 0, 1739, 356], "type": "bar"}], "barlines_x_px": [537, 884, 1596]}, {"piece_id": "ex_50", "exercise_number": 50, "source_page": 11, "piece_image": "pieces/ex_50.png", "setup": {"filename": "setup/ex_50_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_50_bar_01.png", "bbox_px": [62, 0, 702, 362], "type": "bar"}, {"index": 2, "filename": "bars/ex_50_bar_02.png", "bbox_px": [698, 0, 905, 362], "type": "bar"}, {"index": 3, "filename": "bars/ex_50_bar_03.png", "bbox_px": [901, 0, 1596, 362], "type": "bar"}, {"index": 4, "filename": "bars/ex_50_bar_04.png", "bbox_px": [1592, 0, 1737, 362], "type": "bar"}], "barlines_x_px": [700, 903, 1594]}, {"piece_id": "ex_51", "exercise_number": 51, "source_page": 12, "piece_image": "pieces/ex_51.png", "setup": {"filename": "setup/ex_51_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_51_bar_01.png", "bbox_px": [0, 0, 1450, 317], "type": "bar"}], "barlines_x_px": []}, {"piece_id": "ex_52", "exercise_number": 52, "source_page": 12, "piece_image": "pieces/ex_52.png", "setup": {"filename": "setup/ex_52_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_52_bar_01.png", "bbox_px": [58, 0, 484, 325], "type": "bar"}, {"index": 2, "filename": "bars/ex_52_bar_02.png", "bbox_px": [480, 0, 793, 325], "type": "bar"}, {"index": 3, "filename": "bars/ex_52_bar_03.png", "bbox_px": [789, 0, 1124, 325], "type": "bar"}, {"index": 4, "filename": "bars/ex_52_bar_04.png", "bbox_px": [1120, 0, 1431, 325], "type": "bar"}, {"index": 5, "filename": "bars/ex_52_bar_05.png", "bbox_px": [1427, 0, 1549, 325], "type": "bar"}], "barlines_x_px": [482, 791, 1122, 1429]}, {"piece_id": "ex_53", "exercise_number": 53, "source_page": 12, "piece_image": "pieces/ex_53.png", "setup": {"filename": "setup/ex_53_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_53_bar_01.png", "bbox_px": [57, 0, 422, 363], "type": "bar"}, {"index": 2, "filename": "bars/ex_53_bar_02.png", "bbox_px": [418, 0, 837, 363], "type": "bar"}, {"index": 3, "filename": "bars/ex_53_bar_03.png", "bbox_px": [833, 0, 1030, 363], "type": "bar"}, {"index": 4, "filename": "bars/ex_53_bar_04.png", "bbox_px": [1026, 0, 1428, 363], "type": "bar"}, {"index": 5, "filename": "bars/ex_53_bar_05.png", "bbox_px": [1424, 0, 1547, 363], "type": "bar"}], "barlines_x_px": [420, 835, 1028, 1426]}, {"piece_id": "ex_54", "exercise_number": 54, "source_page": 12, "piece_image": "pieces/ex_54.png", "setup": {"filename": "setup/ex_54_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_54_bar_01.png", "bbox_px": [58, 0, 456, 337], "type": "bar"}, {"index": 2, "filename": "bars/ex_54_bar_02.png", "bbox_px": [452, 0, 799, 337], "type": "bar"}, {"index": 3, "filename": "bars/ex_54_bar_03.png", "bbox_px": [795, 0, 1073, 337], "type": "bar"}, {"index": 4, "filename": "bars/ex_54_bar_04.png", "bbox_px": [1069, 0, 1433, 337], "type": "bar"}, {"index": 5, "filename": "bars/ex_54_bar_05.png", "bbox_px": [1429, 0, 1550, 337], "type": "bar"}], "barlines_x_px": [454, 797, 1071, 1431]}, {"piece_id": "ex_55", "exercise_number": 55, "source_page": 12, "piece_image": "pieces/ex_55.png", "setup": {"filename": "setup/ex_55_setup.png", "type": "clef_time_key"}, "bars": [{"index": 1, "filename": "bars/ex_55_bar_01.png", "bbox_px": [0, 0, 1449, 321], "type": "bar"}], "barlines_x_px": []}]};
+const STORAGE_KEY="sightreading_practice_v1";
+const SESSION_ID="sess_"+Math.random().toString(16).slice(2)+"_"+Date.now();
+
+const els={
+  meta:document.getElementById('meta'),
+  search:document.getElementById('search'),
+  zoom:document.getElementById('zoom'),
+  zoomLabel:document.getElementById('zoomLabel'),
+  pieceList:document.getElementById('pieceList'),
+  pieceTitle:document.getElementById('pieceTitle'),
+  pieceInfo:document.getElementById('pieceInfo'),
+  countBadge:document.getElementById('countBadge'),
+  barBadge:document.getElementById('barBadge'),
+  fullImg:document.getElementById('fullImg'),
+  fullErr:document.getElementById('fullErr'),
+  rebuild:document.getElementById('rebuild'),
+  rebuildErr:document.getElementById('rebuildErr'),
+  practiceBadge:document.getElementById('practiceBadge'),
+  timeSigBadge:document.getElementById('timeSigBadge'),
+  practiceTimer:document.getElementById('practiceTimer'),
+  practiceImg:document.getElementById('practiceImg'),
+  practiceErr:document.getElementById('practiceErr'),
+  prevBtn:document.getElementById('prevBtn'),
+  nextBtn:document.getElementById('nextBtn'),
+  autoBtn:document.getElementById('autoBtn'),
+  correctBtn:document.getElementById('correctBtn'),
+  incorrectBtn:document.getElementById('incorrectBtn'),
+  intervalSec:document.getElementById('intervalSec'),
+  advanceOnAnswer:document.getElementById('advanceOnAnswer'),
+  loopPiece:document.getElementById('loopPiece'),
+  exportBtn:document.getElementById('exportBtn'),
+  clearAllBtn:document.getElementById('clearAllBtn'),
+  clearPieceBtn:document.getElementById('clearPieceBtn'),
+  kpiAcc:document.getElementById('kpiAcc'),
+  kpiSpeed:document.getElementById('kpiSpeed'),
+  kpiAccAll:document.getElementById('kpiAccAll'),
+  kpiSpeedAll:document.getElementById('kpiSpeedAll'),
+  accBarPiece:document.getElementById('accBarPiece'),
+  spdBarPiece:document.getElementById('spdBarPiece'),
+  accBarAll:document.getElementById('accBarAll'),
+  spdBarAll:document.getElementById('spdBarAll'),
+};
+
+let currentPieceId=null;
+let currentBarIdx=null;
+let zoom=Number(els.zoom.value)/100;
+let autoRunning=false;
+let autoTimerId=null;
+let barShownAtPerf=null;
+let barTimerUiId=null;
+
+function applyZoomToImage(img){
+  if(!img) return;
+  const nw=img.naturalWidth||0;
+  if(!nw) return;
+  img.style.width=Math.max(1,Math.round(nw*zoom))+"px";
+  img.style.height="auto";
+}
+function applyZoomToAll(){
+  applyZoomToImage(els.fullImg);
+  applyZoomToImage(els.practiceImg);
+  document.querySelectorAll('.bar-wrap img').forEach(applyZoomToImage);
+}
+function setZoom(z){
+  zoom=z;
+  els.zoomLabel.textContent=Math.round(zoom*100)+"%";
+  applyZoomToAll();
+}
+
+function safeText(s){return String(s??'');}
+function renderList(filterText=''){
+  const q=filterText.trim().toLowerCase();
+  els.pieceList.innerHTML='';
+  const pieces=INDEX.pieces||[];
+  const filtered=!q?pieces:pieces.filter(p=>{
+    const hay=[p.exercise_number,p.piece_id,p.source_page,p.piece_image,p.setup?.filename,(p.bars?.length??0)]
+      .map(x=>safeText(x).toLowerCase()).join(' ');
+    return hay.includes(q);
+  });
+  els.countBadge.textContent=`${filtered.length} piece${filtered.length===1?'':'s'}`;
+  filtered.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='piece-btn'+(p.piece_id===currentPieceId?' active':'');
+    btn.type='button';
+    btn.dataset.pieceId=p.piece_id;
+
+    const left=document.createElement('div'); left.className='left';
+    const title=document.createElement('div'); title.className='title'; title.textContent=`Piece ${p.exercise_number}`;
+    const sub=document.createElement('div'); sub.className='sub'; sub.textContent=`Page ${p.source_page} • ${p.bars?.length??0} bars`;
+    left.appendChild(title); left.appendChild(sub);
+
+    const right=document.createElement('span'); right.className='badge'; right.textContent=p.piece_id;
+    btn.appendChild(left); btn.appendChild(right);
+    btn.addEventListener('click',()=>selectPiece(p.piece_id));
+    els.pieceList.appendChild(btn);
+  });
+}
+
+function clearErrors(){
+  [els.fullErr,els.rebuildErr,els.practiceErr].forEach(e=>{e.style.display='none';e.textContent='';});
+}
+function showImgError(targetEl, errEl, src, label){
+  targetEl.src='';
+  errEl.style.display='block';
+  errEl.textContent=`${label} failed to load: ${src}.`;
+}
+
+function groupBarsIntoRows(bars){
+  const rows=[]; const threshold=40;
+  let current=null; let currentY=null;
+  for(const b of bars){
+    const bbox=b.bbox_px||null;
+    const y1=bbox?Number(bbox[1]):(currentY??0);
+    if(!current){current=[];currentY=y1;rows.push(current);current.push(b);continue;}
+    if(Math.abs(y1-currentY)>threshold){current=[];currentY=y1;rows.push(current);}
+    current.push(b);
+  }
+  return rows;
+}
+function highlightActiveBar(){
+  document.querySelectorAll('.bar-wrap[data-bar-idx]').forEach(w=>{
+    const idx=Number(w.dataset.barIdx);
+    w.classList.toggle('active', currentBarIdx!=null && idx===currentBarIdx);
+  });
+}
+
+function rebuildFromBars(piece){
+  els.rebuild.innerHTML='';
+  const bars=(piece.bars||[]).map((b,i)=>({...b,__barIdx:i}));
+  const rows=groupBarsIntoRows(bars);
+  const setupSrc=piece.setup?.filename;
+  if(rows.length===0) rows.push([]);
+  if(setupSrc) rows[0].unshift({type:'clef_time_key', filename:setupSrc});
+
+  rows.forEach((rowBars,rowIndex)=>{
+    const row=document.createElement('div');
+    row.className='bar-row';
+    row.dataset.rowIndex=rowIndex;
+
+    rowBars.forEach(b=>{
+      const wrap=document.createElement('div');
+      wrap.className='bar-wrap'+(b.type==='clef_time_key'?' setup':'');
+      const img=document.createElement('img');
+      img.src=b.filename;
+      img.alt=b.type==='clef_time_key'?'Setup':'Bar';
+      img.addEventListener('load',()=>applyZoomToImage(img));
+      img.addEventListener('error',()=>showImgError(img,els.rebuildErr,b.filename,(b.type==='clef_time_key'?'Setup image':'Bar image')));
+      wrap.appendChild(img);
+
+      const lab=document.createElement('div');
+      lab.className='bar-label';
+      if(b.type==='clef_time_key'){lab.textContent='Setup';}
+      else{
+        wrap.dataset.barIdx=String(b.__barIdx);
+        lab.textContent=`Bar ${b.__barIdx+1}`;
+        wrap.addEventListener('click',()=>setPracticeBar(piece.piece_id,b.__barIdx,'manual'));
+      }
+      wrap.appendChild(lab);
+      row.appendChild(wrap);
+    });
+    els.rebuild.appendChild(row);
+  });
+  highlightActiveBar();
+  applyZoomToAll();
+}
+
+function getCurrentPiece(){return (INDEX.pieces||[]).find(p=>p.piece_id===currentPieceId)||null;}
+
+function fmtMs(ms){ if(ms==null||!isFinite(ms))return "—"; if(ms<1000)return `${Math.round(ms)} ms`; return `${(ms/1000).toFixed(2)} s`; }
+function startBarTimerUi(){
+  stopBarTimerUi();
+  barTimerUiId=setInterval(()=>{
+    if(barShownAtPerf==null){els.practiceTimer.textContent='—';return;}
+    els.practiceTimer.textContent=`Elapsed: ${fmtMs(performance.now()-barShownAtPerf)}`;
+  },60);
+}
+function stopBarTimerUi(){ if(barTimerUiId)clearInterval(barTimerUiId); barTimerUiId=null; }
+
+function setPracticeBar(pieceId, barIdx, mode="manual"){
+  const piece=(INDEX.pieces||[]).find(p=>p.piece_id===pieceId);
+  if(!piece) return;
+  if(pieceId!==currentPieceId) selectPiece(pieceId);
+  const bars=piece.bars||[];
+  if(barIdx<0||barIdx>=bars.length) return;
+
+  currentBarIdx=barIdx;
+  const bar=bars[barIdx];
+
+  els.practiceImg.src=bar.filename;
+  els.practiceImg.onload=()=>applyZoomToImage(els.practiceImg);
+  els.practiceImg.onerror=()=>showImgError(els.practiceImg,els.practiceErr,bar.filename,'Practice bar image');
+
+  els.practiceBadge.textContent=`Piece ${piece.exercise_number} • Bar ${barIdx+1} / ${bars.length} • Mode: ${mode}`;
+  barShownAtPerf=performance.now();
+  startBarTimerUi();
+  highlightActiveBar();
+}
+
+function nextBar(mode="manual"){
+  const piece=getCurrentPiece(); if(!piece) return;
+  const n=piece.bars?.length??0; if(!n) return;
+  if(currentBarIdx==null){setPracticeBar(piece.piece_id,0,mode);return;}
+  let idx=currentBarIdx+1;
+  if(idx>=n){ if(els.loopPiece.checked) idx=0; else { stopAuto(); return; } }
+  setPracticeBar(piece.piece_id, idx, mode);
+}
+function prevBar(mode="manual"){
+  const piece=getCurrentPiece(); if(!piece) return;
+  const n=piece.bars?.length??0; if(!n) return;
+  if(currentBarIdx==null){setPracticeBar(piece.piece_id,0,mode);return;}
+  let idx=currentBarIdx-1; if(idx<0) idx=0;
+  setPracticeBar(piece.piece_id, idx, mode);
+}
+
+function loadStore(){ try{ const raw=localStorage.getItem(STORAGE_KEY); if(!raw) return {events:[]}; const obj=JSON.parse(raw); if(!obj||!Array.isArray(obj.events)) return {events:[]}; return obj; }catch{ return {events:[]}; } }
+function saveStore(store){ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }
+
+function computeStats(events, filterFn){
+  const subset=events.filter(filterFn);
+  const answered=subset.length;
+  const correct=subset.filter(e=>e.result==="correct").length;
+  const acc=answered?(correct/answered):null;
+  const avg=answered?(subset.reduce((s,e)=>s+(e.response_time_ms||0),0)/answered):null;
+  return {answered,correct,acc,avg};
+}
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
+function updateStatsBars(acc, avgMs, accEl, spdEl){
+  accEl.style.width=(acc==null?0:Math.round(clamp01(acc)*100))+"%";
+  if(avgMs==null){ spdEl.style.width="0%"; return; }
+  const s=avgMs/1000;
+  const t=(6-s)/(6-0.3);
+  spdEl.style.width=Math.round(clamp01(t)*100)+"%";
+}
+function updateKPIs(){
+  const store=loadStore(); const events=store.events||[];
+  const piece=getCurrentPiece();
+
+  const all=computeStats(events, ()=>true);
+  els.kpiAccAll.textContent=all.acc==null?"—":`${Math.round(all.acc*100)}%`;
+  els.kpiSpeedAll.textContent=all.avg==null?"—":fmtMs(all.avg);
+  updateStatsBars(all.acc, all.avg, els.accBarAll, els.spdBarAll);
+
+  if(!piece) return;
+  const ps=computeStats(events, e=>e.piece_id===piece.piece_id);
+  els.kpiAcc.textContent=ps.acc==null?"—":`${Math.round(ps.acc*100)}%`;
+  els.kpiSpeed.textContent=ps.avg==null?"—":fmtMs(ps.avg);
+  updateStatsBars(ps.acc, ps.avg, els.accBarPiece, els.spdBarPiece);
+}
+
+function recordResult(result){
+  const piece=getCurrentPiece(); if(!piece) return;
+  if(currentBarIdx==null) return;
+  const bar=piece.bars[currentBarIdx];
+  const rt=Math.max(0, performance.now()-barShownAtPerf);
+
+  const store=loadStore();
+  store.events.push({
+    session_id:SESSION_ID, ts_iso:new Date().toISOString(),
+    piece_id:piece.piece_id, exercise_number:piece.exercise_number,
+    bar_index:currentBarIdx, bar_filename:bar.filename,
+    mode:autoRunning?"auto":"manual", response_time_ms:rt, result
+  });
+  saveStore(store);
+  updateKPIs();
+
+  if(autoRunning || els.advanceOnAnswer.checked) nextBar(autoRunning?"auto":"manual");
+  else barShownAtPerf=performance.now();
+}
+
+function startAuto(){
+  if(autoRunning) return;
+  autoRunning=true;
+  els.autoBtn.textContent="Stop auto";
+  els.autoBtn.classList.add('primary');
+  if(currentBarIdx==null){ const piece=getCurrentPiece(); if(piece && (piece.bars?.length??0)>0) setPracticeBar(piece.piece_id,0,"auto"); }
+  const tick=()=>{
+    if(!autoRunning) return;
+    const ms=Math.max(100, Math.round(Number(els.intervalSec.value)*1000));
+    autoTimerId=setTimeout(()=>{ if(!autoRunning) return; nextBar("auto"); tick(); }, ms);
+  };
+  tick();
+}
+function stopAuto(){
+  autoRunning=false;
+  els.autoBtn.textContent="Start auto";
+  els.autoBtn.classList.remove('primary');
+  if(autoTimerId) clearTimeout(autoTimerId);
+  autoTimerId=null;
+}
+function toggleAuto(){ autoRunning?stopAuto():startAuto(); }
+
+function exportSession(){
+  const store=loadStore();
+  const blob=new Blob([JSON.stringify(store,null,2)],{type:"application/json"});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`practice_export_${SESSION_ID}.json`;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},0);
+}
+function clearAllStats(){ localStorage.removeItem(STORAGE_KEY); updateKPIs(); }
+function clearPieceStats(){
+  const piece=getCurrentPiece(); if(!piece) return;
+  const store=loadStore();
+  store.events=(store.events||[]).filter(e=>e.piece_id!==piece.piece_id);
+  saveStore(store); updateKPIs();
+}
+
+function selectPiece(pieceId){
+  clearErrors();
+  const piece=(INDEX.pieces||[]).find(p=>p.piece_id===pieceId);
+  if(!piece) return;
+  currentPieceId=pieceId;
+
+  document.querySelectorAll('.piece-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.pieceId===pieceId));
+  els.pieceTitle.textContent=`Piece ${piece.exercise_number}`;
+  els.pieceInfo.textContent=`piece_id: ${piece.piece_id} • source page: ${piece.source_page} • bars: ${piece.bars?.length??0}`;
+  els.barBadge.textContent=`${piece.bars?.length??0} bars`;
+
+  els.fullImg.src=piece.piece_image;
+  els.fullImg.onload=()=>applyZoomToImage(els.fullImg);
+
+  rebuildFromBars(piece);
+
+  if((piece.bars?.length??0)>0) setPracticeBar(piece.piece_id,0,"manual");
+  updateKPIs();
+}
+
+function init(){
+  const pieces=INDEX.pieces||[];
+  els.meta.textContent=`Grade ${INDEX.grade??''} • ${pieces.length} pieces`;
+  renderList('');
+  if(pieces.length) selectPiece(pieces[0].piece_id);
+
+  els.search.addEventListener('input', e=>renderList(e.target.value));
+  els.zoom.addEventListener('input', e=>setZoom(Number(e.target.value)/100));
+
+  els.prevBtn.addEventListener('click', ()=>prevBar(autoRunning?"auto":"manual"));
+  els.nextBtn.addEventListener('click', ()=>nextBar(autoRunning?"auto":"manual"));
+  els.autoBtn.addEventListener('click', toggleAuto);
+
+  els.correctBtn.addEventListener('click', ()=>recordResult("correct"));
+  els.incorrectBtn.addEventListener('click', ()=>recordResult("incorrect"));
+
+  els.exportBtn.addEventListener('click', exportSession);
+  els.clearAllBtn.addEventListener('click', ()=>{ if(confirm("Clear ALL stored practice stats?")) clearAllStats(); });
+  els.clearPieceBtn.addEventListener('click', ()=>{ const p=getCurrentPiece(); if(p && confirm(`Clear stored stats for Piece ${p.exercise_number}?`)) clearPieceStats(); });
+
+  setZoom(Number(els.zoom.value)/100);
+  updateKPIs();
+}
+init();
+</script>
+</body>
+</html>
